@@ -2,6 +2,8 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import paymentEventsRouter from './routes/paymentEvents.js';
 import recoveryCasesRouter from './routes/recoveryCases.js';
+import metricsRouter from './routes/metrics.js';
+import exceptionsRouter from './routes/exceptions.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { NotFoundError } from './utils/errors.js';
 
@@ -32,6 +34,8 @@ export const createApp = (): Express => {
   // API Resource Routes
   app.use('/api/payment-events', paymentEventsRouter);
   app.use('/api/recovery-cases', recoveryCasesRouter);
+  app.use('/api/metrics', metricsRouter);
+  app.use('/api/exceptions', exceptionsRouter);
 
   // 404 Catch-All Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {

@@ -112,3 +112,22 @@ model AuditLogEntry {
   @@map("audit_log_entries")
 }
 
+model BatchRun {
+  id                        String    @id @default(uuid()) @db.Uuid
+  batch_id                  String    @unique @map("batch_id")
+  total_cases                Int
+  resolved                   Int
+  escalated                  Int
+  stopped_max_retries        Int
+  no_action                  Int
+  retry_scheduled_pending    Int
+  nudge_sent_pending         Int
+  amount_recovered_paise     BigInt
+  amount_at_risk_paise       BigInt
+  recovery_rate_pct          Float
+  false_escalation_rate_pct  Float
+  created_at                 DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@map("batch_runs")
+}
+
