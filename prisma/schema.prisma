@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model PaymentEvent {
+  id               String         @id @default(uuid()) @db.Uuid
+  payment_id       String         @map("payment_id")
+  order_id         String?        @map("order_id")
+  merchant_id      String         @map("merchant_id")
+  customer_id      String?        @map("customer_id")
+  customer_email   String?        @map("customer_email")
+  customer_phone   String?        @map("customer_phone")
+  amount           Decimal        @map("amount") @db.Decimal(12, 2)
+  currency         String         @default("INR") @map("currency")
+  status           String         @map("status")
+  method           String?        @map("method")
+  error_code       String?        @map("error_code")
+  error_description String?       @map("error_description")
+  error_source     String?        @map("error_source")
+  error_step       String?        @map("error_step")
+  error_reason     String?        @map("error_reason")
+  raw_payload      Json?          @map("raw_payload") @db.JsonB
+  created_at       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  recoveryCases    RecoveryCase[]
+
+  @@index([merchant_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("payment_events")
+}
+
+model RecoveryCase {
+  id               String           @id @default(uuid()) @db.Uuid
+  payment_event_id String           @map("payment_event_id") @db.Uuid
+  case_number      String?          @unique @map("case_number")
+  status           String           @default("OPEN") @map("status")
+  confidence       Float?           @map("confidence")
+  failure_reason   String?          @map("failure_reason")
+  retry_count      Int              @default(0) @map("retry_count")
+  nudge_count      Int              @default(0) @map("nudge_count")
+  max_retries      Int              @default(3) @map("max_retries")
+  next_retry_at    DateTime?        @map("next_retry_at") @db.Timestamptz(6)
+  cooldown_until   DateTime?        @map("cooldown_until") @db.Timestamptz(6)
+  terminal         Boolean          @default(false) @map("terminal")
+  recovered_amount Decimal?         @map("recovered_amount") @db.Decimal(12, 2)
+  recovered_at     DateTime?        @map("recovered_at") @db.Timestamptz(6)
+  metadata         Json?            @map("metadata") @db.JsonB
+  created_at       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  paymentEvent     PaymentEvent     @relation(fields: [payment_event_id], references: [id], onDelete: Cascade)
+  decisions        AgentDecision[]
+  auditLogs        AuditLogEntry[]
+
+  @@index([payment_event_id])
+  @@index([status])
+  @@index([terminal])
+  @@index([created_at])
+  @@map("recovery_cases")
+}
+
+model AgentDecision {
+  id               String       @id @default(uuid()) @db.Uuid
+  recovery_case_id String       @map("recovery_case_id") @db.Uuid
+  agent_name       String       @map("agent_name")
+  model_used       String?      @map("model_used")
+  action           String       @map("action")
+  confidence_score Float?       @map("confidence_score")
+  reasoning        String       @map("reasoning") @db.Text
+  parameters       Json?        @map("parameters") @db.JsonB
+  guardrail_checks Json?        @map("guardrail_checks") @db.JsonB
+  execution_status String       @default("PENDING") @map("execution_status")
+  execution_result Json?        @map("execution_result") @db.JsonB
+  created_at       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  recoveryCase     RecoveryCase @relation(fields: [recovery_case_id], references: [id], onDelete: Cascade)
+
+  @@index([recovery_case_id])
+  @@index([action])
+  @@index([execution_status])
+  @@index([created_at])
+  @@map("agent_decisions")
+}
+
+model AuditLogEntry {
+  id               String       @id @default(uuid()) @db.Uuid
+  recovery_case_id String       @map("recovery_case_id") @db.Uuid
+  from_state       String?      @map("from_state")
+  to_state         String       @map("to_state")
+  action           String       @map("action")
+  actor_type       String       @map("actor_type")
+  actor_id         String?      @map("actor_id")
+  metadata         Json?        @map("metadata") @db.JsonB
+  ip_address       String?      @map("ip_address")
+  created_at       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  recoveryCase     RecoveryCase @relation(fields: [recovery_case_id], references: [id], onDelete: Cascade)
+
+  @@index([recovery_case_id])
+  @@index([from_state])
+  @@index([to_state])
+  @@index([created_at])
+  @@map("audit_log_entries")
+}
+
