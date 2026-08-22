@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx scripts/generate-synthetic-events.ts",
     "db:seed:force": "tsx scripts/generate-synthetic-events.ts --force",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "batch:run": "tsx scripts/run-batch-recovery.ts"
   },
   "keywords": [
     "nodejs",
@@ -26,6 +27,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
