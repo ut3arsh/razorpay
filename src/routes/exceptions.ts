@@ -33,24 +33,47 @@ router.get(
       where.status = { in: ['ESCALATED', 'STOPPED'] };
     }
 
-    const [total, records] = await Promise.all([
-      prisma.recoveryCase.count({ where }),
-      prisma.recoveryCase.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          paymentEvent: true,
-          decisions: {
-            orderBy: { created_at: 'desc' },
-            take: 1,
+    const [total, escalatedCount, stoppedCount, allMatchingCases, records] =
+      await Promise.all([
+        prisma.recoveryCase.count({ where }),
+        prisma.recoveryCase.count({
+          where: { status: 'ESCALATED' },
+        }),
+        prisma.recoveryCase.count({
+          where: { status: 'STOPPED' },
+        }),
+        prisma.recoveryCase.findMany({
+          where,
+          select: {
+            status: true,
+            paymentEvent: {
+              select: {
+                amount: true,
+              },
+            },
           },
-        },
-        orderBy: { created_at: 'desc' },
-      }),
-    ]);
+        }),
+        prisma.recoveryCase.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            paymentEvent: true,
+            decisions: {
+              orderBy: { created_at: 'desc' },
+              take: 1,
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        }),
+      ]);
 
     const totalPages = Math.ceil(total / limit) || 1;
+
+    const totalAmountAtRisk = allMatchingCases.reduce((sum, c) => {
+      const amt = c.paymentEvent ? Number(c.paymentEvent.amount) : 0;
+      return sum + amt;
+    }, 0);
 
     const formattedRecords = records.map((rc) => ({
       case_id: rc.id,
@@ -71,6 +94,12 @@ router.get(
       page,
       limit,
       total_pages: totalPages,
+      summary: {
+        total_count: total,
+        escalated_count: escalatedCount,
+        stopped_count: stoppedCount,
+        total_amount_at_risk: totalAmountAtRisk,
+      },
       data: formattedRecords,
     });
   })

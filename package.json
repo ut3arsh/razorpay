@@ -14,7 +14,9 @@
     "db:seed": "tsx scripts/generate-synthetic-events.ts",
     "db:seed:force": "tsx scripts/generate-synthetic-events.ts --force",
     "db:studio": "prisma studio",
-    "batch:run": "tsx scripts/run-batch-recovery.ts"
+    "batch:run": "tsx scripts/run-batch-recovery.ts",
+    "frontend:dev": "npm run dev --prefix frontend",
+    "frontend:build": "npm run build --prefix frontend"
   },
   "keywords": [
     "nodejs",

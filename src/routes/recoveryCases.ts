@@ -94,6 +94,40 @@ async function ensureRecoveryCaseExists(id: string) {
 }
 
 /**
+ * GET /api/recovery-cases/:id
+ * Single RecoveryCase by UUID with linked PaymentEvent
+ */
+router.get(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!isValidUUID(id)) {
+      throw new BadRequestError(
+        `Invalid UUID format for recovery case ID: "${id}"`,
+        'INVALID_UUID'
+      );
+    }
+
+    const recoveryCase = await prisma.recoveryCase.findUnique({
+      where: { id },
+      include: {
+        paymentEvent: true,
+      },
+    });
+
+    if (!recoveryCase) {
+      throw new NotFoundError(
+        `Recovery case with ID "${id}" was not found`,
+        'RECOVERY_CASE_NOT_FOUND'
+      );
+    }
+
+    res.status(200).json(recoveryCase);
+  })
+);
+
+/**
  * GET /api/recovery-cases/:id/audit-log
  * Full AuditLogEntry trail ordered by created_at ascending
  */
