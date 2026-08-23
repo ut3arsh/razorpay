@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-accent-recovered: var(--accent-recovered);
+  --color-accent-escalated: var(--accent-escalated);
+  --color-accent-stopped: var(--accent-stopped);
+  --color-accent-pending: var(--accent-pending);
+}
+
+:root {
+  --bg: #14171C;
+  --surface: #1C2028;
+  --surface-raised: #232833;
+  --border: #2A2F3A;
+  --text-primary: #E8EAED;
+  --text-muted: #8B93A1;
+  --text-faint: #5A6270;
+  --accent-recovered: #4FD1A5;
+  --accent-escalated: #E8A33D;
+  --accent-stopped: #E1615A;
+  --accent-pending: #6B8AFA;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Custom scrollbars for ledger precision */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
+/* Keyboard focus visibility across interactive elements */
+:focus-visible {
+  outline: 1.5px solid var(--accent-recovered) !important;
+  outline-offset: 1px !important;
+}
+
+/* Smooth fade-in animation for ledger items */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out forwards;
+}
