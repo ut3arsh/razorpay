@@ -3,6 +3,7 @@ import type { RecoveryCase } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { classifyFailure } from './classifier.js';
 import { decideAction } from './decisionEngine.js';
+import { createRecoveryPaymentLink } from '../lib/razorpayPaymentLinks.js';
 import { NotFoundError, isValidUUID, BadRequestError } from '../utils/errors.js';
 
 /**
@@ -99,6 +100,26 @@ export async function processPaymentEvent(
       now,
     });
 
+    // If decision is NUDGE_SENT and RAZORPAY_LIVE_MODE is explicitly enabled ("true"),
+    // attempt to create a real Razorpay payment link. Otherwise (default "false" or unset),
+    // skip the API call and use synthetic nudge behavior.
+    const isRazorpayLiveMode = process.env.RAZORPAY_LIVE_MODE?.trim().toLowerCase() === 'true';
+    let paymentLinkData: { id: string; short_url: string; status: string } | null = null;
+    if (decision.action === 'NUDGE_SENT' && isRazorpayLiveMode) {
+      try {
+        paymentLinkData = await createRecoveryPaymentLink(recoveryCase, paymentEvent);
+        console.log(
+          `[PaymentLink] Created real Razorpay payment link ${paymentLinkData.id} for case ${recoveryCase.case_number || recoveryCase.id}`
+        );
+      } catch (linkError: any) {
+        console.error(
+          `[PaymentLink] Failed to create Razorpay payment link for case ${recoveryCase.case_number || recoveryCase.id}:`,
+          linkError?.message || linkError
+        );
+        // Fallback to synthetic nudge behavior without failing batch
+      }
+    }
+
     // Step 5: Determine state updates for RecoveryCase
     let newStatus = recoveryCase.status;
     let isTerminal = recoveryCase.terminal;
@@ -138,6 +159,31 @@ export async function processPaymentEvent(
       // Retain current status and cooldown
     }
 
+    const decisionParams = {
+      ...decision.params,
+      ...(paymentLinkData
+        ? {
+            plink_id: paymentLinkData.id,
+            short_url: paymentLinkData.short_url,
+            plink_status: paymentLinkData.status,
+          }
+        : {}),
+    };
+
+    const existingMetadata =
+      typeof recoveryCase.metadata === 'object' && recoveryCase.metadata !== null
+        ? (recoveryCase.metadata as Record<string, any>)
+        : {};
+
+    const updatedMetadata = paymentLinkData
+      ? {
+          ...existingMetadata,
+          plink_id: paymentLinkData.id,
+          short_url: paymentLinkData.short_url,
+          plink_status: paymentLinkData.status,
+        }
+      : recoveryCase.metadata;
+
     // Update RecoveryCase
     const updated = await tx.recoveryCase.update({
       where: { id: recoveryCase.id },
@@ -150,6 +196,7 @@ export async function processPaymentEvent(
         next_retry_at: newNextRetryAt,
         cooldown_until: newCooldownUntil,
         terminal: isTerminal,
+        metadata: updatedMetadata ?? undefined,
       },
     });
 
@@ -162,14 +209,20 @@ export async function processPaymentEvent(
         action: decision.action,
         confidence_score: classification.confidence,
         reasoning: decision.reasoning,
-        parameters: decision.params,
+        parameters: decisionParams,
         guardrail_checks: decision.guardrail_checks,
         execution_status: 'COMPLETED',
         execution_result: {
           action: decision.action,
-          params: decision.params,
+          params: decisionParams,
           previous_status: previousStatus,
           new_status: newStatus,
+          ...(paymentLinkData
+            ? {
+                plink_id: paymentLinkData.id,
+                short_url: paymentLinkData.short_url,
+              }
+            : {}),
         },
       },
     });
@@ -189,6 +242,12 @@ export async function processPaymentEvent(
           failure_reason: classification.failure_reason,
           source: classification.source,
           is_new_case: isNewCase,
+          ...(paymentLinkData
+            ? {
+                plink_id: paymentLinkData.id,
+                short_url: paymentLinkData.short_url,
+              }
+            : {}),
         },
       },
     });

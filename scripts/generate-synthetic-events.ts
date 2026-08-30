@@ -169,25 +169,39 @@ interface GeneratedEventItem {
   edgeCaseType?: string;
 }
 
-export async function generateSyntheticEvents(): Promise<void> {
-  const isForce = process.argv.includes('--force');
+export interface GenerateSyntheticEventsOptions {
+  force?: boolean;
+  silent?: boolean;
+}
+
+export async function generateSyntheticEvents(options?: GenerateSyntheticEventsOptions): Promise<void> {
+  const isForce = options?.force ?? process.argv.includes('--force');
+  const isSilent = options?.silent ?? false;
 
   // Check if records already exist
   const existingCount = await prisma.paymentEvent.count();
   if (existingCount > 0) {
     if (!isForce) {
-      console.warn(
-        `Database already contains ${existingCount} PaymentEvent records — refusing to reseed. Pass --force to wipe and reseed anyway.`
-      );
+      if (!isSilent) {
+        console.warn(
+          `Database already contains ${existingCount} PaymentEvent records — refusing to reseed. Pass --force to wipe and reseed anyway.`
+        );
+      }
       return;
     }
 
-    console.log(`--force passed: Wiping ${existingCount} existing PaymentEvent records...`);
+    if (!isSilent) {
+      console.log(`--force passed: Wiping ${existingCount} existing PaymentEvent records...`);
+    }
     await prisma.paymentEvent.deleteMany({});
-    console.log('Existing records deleted successfully.\n');
+    if (!isSilent) {
+      console.log('Existing records deleted successfully.\n');
+    }
   }
 
-  console.log('🚀 Starting synthetic PaymentEvent generation...\n');
+  if (!isSilent) {
+    console.log('🚀 Starting synthetic PaymentEvent generation...\n');
+  }
 
   const now = Date.now();
   const eventList: GeneratedEventItem[] = [];
@@ -547,7 +561,9 @@ export async function generateSyntheticEvents(): Promise<void> {
   // ==========================================
   // INSERTION INTO DATABASE VIA PRISMA
   // ==========================================
-  console.log(`Inserting ${eventList.length} synthetic PaymentEvent records into database...`);
+  if (!isSilent) {
+    console.log(`Inserting ${eventList.length} synthetic PaymentEvent records into database...`);
+  }
 
   let insertedCount = 0;
   for (const item of eventList) {
@@ -558,7 +574,9 @@ export async function generateSyntheticEvents(): Promise<void> {
   }
 
   // Simulate duplicate webhook delivery for Edge Case 1 (now stored in DB for application-level deduplication)
-  console.log('\nTesting Edge Case 1: Inserting duplicate webhook delivery for payment_id:', edge1PaymentId);
+  if (!isSilent) {
+    console.log('\nTesting Edge Case 1: Inserting duplicate webhook delivery for payment_id:', edge1PaymentId);
+  }
   const duplicateWebhookEvent = await prisma.paymentEvent.create({
     data: {
       payment_id: edge1PaymentId,
@@ -586,8 +604,9 @@ export async function generateSyntheticEvents(): Promise<void> {
     },
   });
   insertedCount++;
-  console.log('✓ Successfully inserted duplicate webhook event record into database (ID:', duplicateWebhookEvent.id, ').');
-
+  if (!isSilent) {
+    console.log('✓ Successfully inserted duplicate webhook event record into database (ID:', duplicateWebhookEvent.id, ').');
+  }
 
   // ==========================================
   // SUMMARY REPORT BREAKDOWN
@@ -603,32 +622,39 @@ export async function generateSyntheticEvents(): Promise<void> {
     ambiguousCases: eventList.filter((e) => e.category === 'ambiguous').length,
   };
 
-  console.log('\n==================================================');
-  console.log('📊 SYNTHETIC PAYMENT EVENTS SEED SUMMARY');
-  console.log('==================================================');
-  console.log(`Total Records Inserted : ${summary.totalRecords}`);
-  console.log('--------------------------------------------------');
-  console.log('Normal Failures (40 total):');
-  console.log(`  • Insufficient Funds : ${summary.categories.insufficient_funds}`);
-  console.log(`  • Card Expired       : ${summary.categories.card_expired}`);
-  console.log(`  • Bank Decline       : ${summary.categories.bank_decline}`);
-  console.log('--------------------------------------------------');
-  console.log(`Edge Cases             : ${summary.edgeCases}`);
-  eventList
-    .filter((e) => e.category === 'edge_case')
-    .forEach((e) => {
-      console.log(`  - ${e.edgeCaseType}`);
-    });
-  console.log('--------------------------------------------------');
-  console.log(`Ambiguous Cases        : ${summary.ambiguousCases}`);
-  console.log('==================================================\n');
+  if (!isSilent) {
+    console.log('\n==================================================');
+    console.log('📊 SYNTHETIC PAYMENT EVENTS SEED SUMMARY');
+    console.log('==================================================');
+    console.log(`Total Records Inserted : ${summary.totalRecords}`);
+    console.log('--------------------------------------------------');
+    console.log('Normal Failures (40 total):');
+    console.log(`  • Insufficient Funds : ${summary.categories.insufficient_funds}`);
+    console.log(`  • Card Expired       : ${summary.categories.card_expired}`);
+    console.log(`  • Bank Decline       : ${summary.categories.bank_decline}`);
+    console.log('--------------------------------------------------');
+    console.log(`Edge Cases             : ${summary.edgeCases}`);
+    eventList
+      .filter((e) => e.category === 'edge_case')
+      .forEach((e) => {
+        console.log(`  - ${e.edgeCaseType}`);
+      });
+    console.log('--------------------------------------------------');
+    console.log(`Ambiguous Cases        : ${summary.ambiguousCases}`);
+    console.log('==================================================\n');
+  }
 }
 
-generateSyntheticEvents()
-  .catch((err) => {
-    console.error('❌ Error generating synthetic events:', err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (
+  process.argv[1]?.endsWith('generate-synthetic-events.ts') ||
+  process.argv[1]?.endsWith('generate-synthetic-events.js')
+) {
+  generateSyntheticEvents()
+    .catch((err) => {
+      console.error('❌ Error generating synthetic events:', err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
