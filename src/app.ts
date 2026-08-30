@@ -4,6 +4,7 @@ import paymentEventsRouter from './routes/paymentEvents.js';
 import recoveryCasesRouter from './routes/recoveryCases.js';
 import metricsRouter from './routes/metrics.js';
 import exceptionsRouter from './routes/exceptions.js';
+import webhooksRouter from './routes/webhooks.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { NotFoundError } from './utils/errors.js';
 
@@ -12,6 +13,16 @@ export const createApp = (): Express => {
 
   // Core Middleware
   app.use(cors());
+
+  // Webhook Routes (Must be mounted before global express.json() to preserve raw body for signature verification)
+  app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhooksRouter);
+  app.post('/', express.raw({ type: 'application/json' }), (req, res, next) => {
+    if (req.headers['x-razorpay-signature'] || req.headers['user-agent']?.includes('Razorpay')) {
+      return webhooksRouter(req, res, next);
+    }
+    next();
+  });
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
