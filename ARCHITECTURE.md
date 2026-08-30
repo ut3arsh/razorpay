@@ -41,9 +41,9 @@ DECISION  ──decideAction()──>  first-match guardrail rules, in order:
    │         7. bank_decline, retries < 2         -> RETRY_SCHEDULED (+6h)
    │         8. default                           -> ESCALATE_HUMAN
    ▼
-EXECUTE  ──simulateOutcome()──>  synthetic success/fail roll (seeded,
-   │                              documented as a stand-in for a real
-   │                              webhook confirmation)
+EXECUTE ─────── NUDGE_SENT: real Razorpay Payment Link + real webhook outcome
+   │            RETRY_SCHEDULED: simulateOutcome() [synthetic, documented —
+   │                              Razorpay owns subscription retry scheduling]
    ▼
    ├─ success ──> RESOLVED (terminal)
    └─ failure ──> loop back to DECISION with incremented retry/nudge count,

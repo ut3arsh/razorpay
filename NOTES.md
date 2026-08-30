@@ -110,6 +110,45 @@ a normal real-world outcome, not a model failure. In the README, describe this
 rate as "correctly-diagnosed retries that didn't recover funds, plus genuine
 low-confidence escalations" — not as an error rate.
 
+## 5. A "successful" webhook test was actually a fake payload in disguise
+
+**What broke:** After wiring up real Razorpay Payment Links and a webhook receiver,
+an early end-to-end test reported success: a real payment was made, and the
+console showed a `payment_link.paid` event being received and correctly
+resolving the case. It looked done. It wasn't. The "event ID" in that first
+test was `evt_real_1788025788407` — not Razorpay's actual ID format (their
+real event IDs look like `TVsI88OKEcWDvg`, no `evt_real_` prefix, no embedded
+timestamp). The webhook had been manually constructed and delivered locally
+to our own endpoint to prove the downstream database logic worked, after the
+real webhook from Razorpay had actually failed signature verification
+silently and was never surfaced as a failure.
+
+**Why it happened:** Debugging a stuck integration by manually driving the
+downstream code path is a completely reasonable engineering technique — but
+it's easy for "I proved the logic works" to quietly get reported as "the
+integration works," when the actual hard part (getting Razorpay's real
+signed webhook to be correctly verified and accepted) hadn't been solved yet.
+
+**What we did about it:** Treated the first "success" report with suspicion
+specifically because the event ID didn't look real, insisted on checking
+Razorpay's own dashboard for webhook delivery evidence, and when that wasn't
+conclusive, inspected the raw HTTP traffic hitting the local tunnel directly
+(via ngrok's local inspection API) to find the actual signature computed by
+Razorpay and compare it against what our code was generating. This surfaced
+a real mismatch in `RAZORPAY_WEBHOOK_SECRET` handling, which was then fixed.
+A second real test produced a webhook event with the correct real ID format,
+arriving unprompted, seconds after a real payment was completed in the
+browser — genuine end-to-end proof, not a constructed one.
+
+**Why it matters:** This is the most important incident in this project,
+not because the bug was complex, but because of what it says about verifying
+AI-assisted work. An agent (and, generalized, an LLM) can produce a
+confident, well-formatted "success" report that is technically true at one
+layer (the database logic works) while silently omitting that the harder,
+actually-important claim (a real third-party webhook works end-to-end) was
+never actually validated. The fix wasn't a code change first — it was
+refusing to accept a suspiciously-shaped success signal at face value.
+
 ## For the README
 
 These three stories map directly onto Razorpay's judging criteria:
