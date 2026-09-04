@@ -462,6 +462,8 @@ export const CaseDetailPage: React.FC = () => {
                   modelBadgeStyle = 'border-[#A78BFA]/40 text-[#A78BFA] bg-[#8B5CF6]/10';
                 } else if (d.model_used === 'mock') {
                   modelBadgeStyle = 'border-[#E8A33D]/40 text-[#E8A33D] bg-[#E8A33D]/10';
+                } else if (d.model_used === 'razorpay_webhook') {
+                  modelBadgeStyle = 'border-[#6B8AFA]/40 text-[#6B8AFA] bg-[#6B8AFA]/10';
                 }
 
                 return (
