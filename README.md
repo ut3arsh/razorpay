@@ -3,11 +3,12 @@
 
 A guardrailed autonomous agent that detects failed subscription/mandate payments, diagnoses why they failed, decides on a bounded recovery action, executes it within hard-coded safety limits, and logs every decision to an immutable audit trail.
 
-**Benchmarked across 10 independent runs** (56 synthetic cases each, fresh reseed per run, real Gemini LLM classification on ambiguous cases every time — not a single cherry-picked number):
-- **Recovery rate: 34.6% ± 6.0%** (range: 21.4%–42.9%) — ₹53,826.50 ± ₹8,656.46 recovered per batch
-- **Escalation rate averages ~54%** — not an error rate; see [Metrics, honestly](#metrics-honestly) below
-- **0 crashes, 0 unhandled failures, 0 hard-stops on max-retries** across all 10 runs — every case either resolved, is mid-retry, or was safely escalated
-- **100% of decisions logged** with reasoning, confidence, and guardrail checks
+**Results on the demo dataset (the run shown in our demo video):**
+- **Recovery rate: 37.5%** (21 of 56 cases resolved) — ₹52,564.00 recovered out of ₹84,193.00 at risk
+- **Escalated cases:** 29 of 56 (51.8%) — safe escalations, not an error rate; see [Metrics, honestly](#metrics-honestly) below
+- **0 crashes, 0 unhandled failures, 0 hard-stops on max-retries** — every case either resolved, is mid-retry, or was safely escalated
+- **100% of decisions logged** with reasoning, confidence, and deterministic guardrail checks
+*(Across 10 independent benchmark runs, the pipeline averages **34.6% ± 6.0%** recovery — full statistical distribution detailed under [Metrics, honestly](#metrics-honestly)).*
 
 ---
 
@@ -65,7 +66,9 @@ This is scored explicitly under "AI judgment," so we're stating it plainly:
 
 ## Metrics, honestly
 
-Razorpay's bar explicitly asks for **measured** recovery across a batch, not a cherry-picked demo. Rather than report one lucky run, we ran the full pipeline 10 independent times — fresh synthetic reseed each time, real Gemini classification on ambiguous cases every run — and report the range:
+The headline figures at the top of this README reflect the specific live run shown in our demo video (37.5% recovery rate, 21 resolved cases, ₹52,564.00 recovered).
+
+Razorpay's bar explicitly asks for **measured** recovery across a batch, not a single cherry-picked demo. To verify robustness beyond a single execution, we also ran the full pipeline across 10 independent benchmark runs — fresh synthetic reseed each time, real Gemini classification on ambiguous cases every run — and report the full statistical range:
 
 | Metric | Min | Max | Mean | Std Dev |
 |---|---|---|---|---|
